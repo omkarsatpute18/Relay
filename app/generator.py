@@ -90,19 +90,22 @@ RESEARCH PASSAGES:
 {context}
 """
 
-        response = self.groq.generate(
-            messages=[
-                {
-                    "role": "system",
-                    "content": system_prompt
-                },
-                {
-                    "role": "user",
-                    "content": user_prompt
-                }
-            ],
-            max_tokens=800
-        )
+        response = self.groq.generate_with_retries(
+        messages=[
+        {
+            "role": "system",
+            "content": system_prompt
+        },
+        {
+            "role": "user",
+            "content": user_prompt
+        }
+    ],
+    max_tokens=800,
+    max_attempts=3,
+    max_retry_wait_seconds=10,
+    base_backoff_seconds=1
+)
         
 
         if response["status"] != "ok":
@@ -118,7 +121,8 @@ RESEARCH PASSAGES:
             "tokens_out": response.get("tokens_out"),
             "retries": response.get("retries", 0),
             "retry_after_seconds": response.get("retry_after_seconds"),
-            "rate_limit_headers": response.get("rate_limit_headers", {})
+            "rate_limit_headers": response.get("rate_limit_headers", {}),
+            "retries": response.get("retries", 0),
 }
 
         try:

@@ -1,3 +1,4 @@
+import random
 import re
 import os
 import time
@@ -190,6 +191,95 @@ class GroqService:
                 "error", error, start_time, start_timestamp
             )
 
+    
+    def generate_with_retries(
+        self,
+        messages,
+        max_tokens=800,
+        max_attempts=3,
+        max_retry_wait_seconds=10,
+        base_backoff_seconds=1.0
+    ):
+        """
+        Retry temporary failures using a bounded retry policy.
+
+        Rate limits are retried only when the provider supplies
+        a known retry delay within our configured wait budget.
+        """
+
+        overall_start = time.perf_counter()
+        retries = 0
+        response = None
+
+        for attempt in range(max_attempts):
+
+            response = self.generate(
+                messages=messages,
+                max_tokens=max_tokens
+            )
+
+            if response["status"] == "ok":
+                break
+
+            wait_seconds = None
+
+            if response["status"] == "rate_limited":
+
+                # Never guess a rate-limit recovery time.
+                wait_seconds = response.get("retry_after_seconds")
+
+                if wait_seconds is None:
+                    break
+
+                # Do not wait a long time for a daily quota.
+                if wait_seconds > max_retry_wait_seconds:
+                    break
+
+            elif response.get("retryable", False):
+
+                # Exponential backoff with small random jitter.
+                wait_seconds = min(
+                    base_backoff_seconds * (2 ** attempt),
+                    max_retry_wait_seconds
+                )
+
+                wait_seconds += random.uniform(0, 0.2)
+
+            else:
+                # Do not retry permanent or unclassified errors.
+                break
+
+            # No more attempts are available.
+            if attempt == max_attempts - 1:
+                break
+
+            print(
+                f"Retry {attempt + 1}/{max_attempts - 1} "
+                f"after {wait_seconds:.2f} seconds..."
+            )
+
+            time.sleep(wait_seconds)
+            retries += 1
+
+        if response is None:
+            return {
+                "status": "error",
+                "answer": None,
+                "error": "No request attempt was made",
+                "retries": retries
+            }
+
+        # Record the total time, including retry waits.
+        response["total_ms"] = round(
+            (time.perf_counter() - overall_start) * 1000,
+            2
+        )
+
+        response["retries"] = retries
+
+        return response
+
+
     def generate_stream(self, messages, max_tokens=800):
 
         start_time = time.perf_counter()
@@ -303,7 +393,15 @@ class GroqService:
             "rate_limit_headers": rate_limit_headers,
             "retry_after_seconds": retry_after,
             "retries": 0,
-            "error": str(error)
+            "error": str(error),
+            "retryable": (
+    isinstance(error, (APITimeoutError, APIConnectionError))
+    or (
+        isinstance(error, APIStatusError)
+        and http_status is not None
+        and http_status >= 500
+    )
+),
         }
 
 
