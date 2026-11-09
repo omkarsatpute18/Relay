@@ -3,6 +3,7 @@ import csv
 import os
 import uuid
 from pathlib import Path
+import threading
 
 
 class CSVLogger:
@@ -36,6 +37,7 @@ class CSVLogger:
             parents=True,
             exist_ok=True
         )
+        self.lock = threading.Lock()
 
         if not self.filepath.exists():
             with open(
@@ -93,17 +95,16 @@ class CSVLogger:
             "answer_grade": answer_grade
         }
 
-        with open(
-            self.filepath,
-            "a",
-            newline="",
-            encoding="utf-8"
-        ) as file:
-
-            writer = csv.DictWriter(
-                file,
-                fieldnames=self.COLUMNS
-            )
-            writer.writerow(row)
-
+        with self.lock:
+            with open(
+        self.filepath,
+        "a",
+        newline="",
+        encoding="utf-8"
+    ) as file:
+                writer = csv.DictWriter(
+            file,
+            fieldnames=self.COLUMNS
+        )
+        writer.writerow(row)
         return row["request_id"]
