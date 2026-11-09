@@ -18,20 +18,19 @@ logger = CSVLogger()
 def run_one_request(service, request_number, scenario):
     """Run one simulated request and collect measurements."""
 
-    start_time = time.perf_counter()
+    request_start_time = time.perf_counter()
+    start_timestamp = datetime.now(timezone.utc).isoformat()
 
     result = service.generate(
         f"Explain attention mechanism. Request {request_number}"
     )
 
-    total_ms = (time.perf_counter() - start_time) * 1000
-
-    from datetime import datetime, timezone
+    total_ms = (time.perf_counter() - request_start_time) * 1000
 
     logger.log_request(
         scenario=scenario,
         source="standin",
-        start_time=datetime.now(timezone.utc).isoformat(),
+        start_time=start_timestamp,
         first_token_ms=None,
         total_ms=round(total_ms, 2),
         status=result["status"],
@@ -43,7 +42,6 @@ def run_one_request(service, request_number, scenario):
     )
 
     return result
-
 
 def run_scenario(name, request_count, workers, config):
     """Run one stand-in load scenario."""
