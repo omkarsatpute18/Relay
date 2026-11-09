@@ -214,9 +214,7 @@ class RelayPipeline:
                     decision["retrieval_attempts"]
                 ),
                 "_metrics": {
-                    "first_token_ms": generated.get(
-                        "first_token_ms"
-                    ),
+                    "first_token_ms": generated.get("first_token_ms"),
                     "tokens_in": generated.get("tokens_in"),
                     "tokens_out": generated.get("tokens_out"),
                     "retries": generated.get("retries", 0)

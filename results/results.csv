@@ -2,3 +2,13 @@ request_id,scenario,source,start_time,first_token_ms,total_ms,status,retries,tok
 b72ee2e2-2e56-4400-8237-6d93cb243cf7,functional_baseline,real,2026-11-09T15:22:42.052520+00:00,,1329.14,error,0,,,BM25_chunk500_top3_retry8_threshold1.0,
 16d8fe98-80bf-4f71-b11c-3f05abb46ec2,functional_baseline,real,2026-11-09T15:26:40.527539+00:00,,1327.92,ok,0,1593,482,BM25_chunk500_top3_retry8_threshold1.0,
 f596a3a2-f403-40c2-9972-56119c902b73,functional_baseline,real,2026-11-09T15:26:58.100776+00:00,,482.96,ok,0,1292,84,BM25_chunk500_top3_retry8_threshold1.0,refused_correctly
+086feac3-89ca-42bf-b91a-8aa62142f956,real_baseline_steady,real,2026-11-09T15:34:41.681020+00:00,,2747.42,ok,0,1593,375,BM25_chunk500_top3_retry8_threshold1.0,
+4d57ebbc-5a13-4f63-8f8c-d2fed457e7d3,real_baseline_steady,real,2026-11-09T15:34:46.431457+00:00,,842.13,ok,0,1794,273,BM25_chunk500_top3_retry8_threshold1.0,
+e7d80662-f89f-4039-a345-290e0b15c1ab,real_baseline_steady,real,2026-11-09T15:34:49.276424+00:00,,2618.7,ok,0,1661,618,BM25_chunk500_top3_retry8_threshold1.0,
+498dd63b-5b49-44d3-8503-35ec4e2ad802,real_baseline_steady,real,2026-11-09T15:34:53.897099+00:00,,600.97,ok,0,1640,303,BM25_chunk500_top3_retry8_threshold1.0,
+d3cf11aa-68f9-49fd-bd5d-a3c304624628,real_baseline_steady,real,2026-11-09T15:34:56.499928+00:00,,84.12,rate_limited,0,,,BM25_chunk500_top3_retry8_threshold1.0,
+5e5f5fed-9b11-4a0b-9585-57c8e1124d61,real_baseline_steady,real,2026-11-09T15:34:58.606150+00:00,,480.34,ok,0,1292,84,BM25_chunk500_top3_retry8_threshold1.0,refused_correctly
+e393cbf4-c31f-418e-8f25-9e3b04735a89,real_baseline_steady,real,2026-11-09T15:35:01.088850+00:00,,80.54,rate_limited,0,,,BM25_chunk500_top3_retry8_threshold1.0,
+43a81331-f7ff-43e7-83c9-b34516885912,real_baseline_steady,real,2026-11-09T15:35:03.171725+00:00,,73.58,rate_limited,0,,,BM25_chunk500_top3_retry8_threshold1.0,
+163e5897-de4d-4301-957a-9d562d76c7a4,real_baseline_steady,real,2026-11-09T15:35:05.247854+00:00,,71.71,rate_limited,0,,,BM25_chunk500_top3_retry8_threshold1.0,
+a455b749-d704-459d-941c-10ded0075441,real_baseline_steady,real,2026-11-09T15:35:07.321517+00:00,,76.47,rate_limited,0,,,BM25_chunk500_top3_retry8_threshold1.0,
