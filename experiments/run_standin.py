@@ -1,12 +1,10 @@
 
 import sys
 import time
-import uuid
-import threading
 from pathlib import Path
+from datetime import datetime, timezone
 from concurrent.futures import ThreadPoolExecutor
 
-# Make the project root accessible.
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT))
 
@@ -15,8 +13,9 @@ from app.csv_logger import CSVLogger
 
 logger = CSVLogger()
 
+
 def run_one_request(service, request_number, scenario):
-    """Run one simulated request and collect measurements."""
+    """Run a normal request with failure and rate-limit simulation."""
 
     request_start_time = time.perf_counter()
     start_timestamp = datetime.now(timezone.utc).isoformat()
@@ -43,8 +42,52 @@ def run_one_request(service, request_number, scenario):
 
     return result
 
-def run_scenario(name, request_count, workers, config):
-    """Run one stand-in load scenario."""
+
+def run_streaming_request(service, request_number, scenario):
+    """Run a streaming request and measure first-token latency."""
+
+    request_start_time = time.perf_counter()
+    start_timestamp = datetime.now(timezone.utc).isoformat()
+
+    first_token_ms = None
+    response_parts = []
+
+    for chunk in service.generate_stream(
+        f"Explain attention mechanism. Request {request_number}"
+    ):
+        if first_token_ms is None:
+            first_token_ms = chunk["first_token_ms"]
+
+        response_parts.append(chunk["piece"])
+
+    total_ms = (time.perf_counter() - request_start_time) * 1000
+
+    result = {
+        "status": "ok",
+        "answer": "".join(response_parts),
+        "total_ms": round(total_ms, 2),
+        "first_token_ms": first_token_ms
+    }
+
+    logger.log_request(
+        scenario=scenario,
+        source="standin",
+        start_time=start_timestamp,
+        first_token_ms=first_token_ms,
+        total_ms=round(total_ms, 2),
+        status="ok",
+        retries=0,
+        tokens_in=None,
+        tokens_out=None,
+        retrieval_setting="standin_streaming",
+        answer_grade=""
+    )
+
+    return result
+
+
+def run_scenario(name, request_count, workers, config, streaming=False):
+    """Run one normal or streaming load scenario."""
 
     print(f"\nStarting scenario: {name}")
 
@@ -52,9 +95,18 @@ def run_scenario(name, request_count, workers, config):
 
     start_time = time.perf_counter()
 
+    request_function = (
+        run_streaming_request if streaming else run_one_request
+    )
+
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = [
-            executor.submit(run_one_request, service, i + 1, name)
+            executor.submit(
+                request_function,
+                service,
+                i + 1,
+                name
+            )
             for i in range(request_count)
         ]
 
@@ -63,7 +115,9 @@ def run_scenario(name, request_count, workers, config):
     duration = time.perf_counter() - start_time
 
     successful = sum(r["status"] == "ok" for r in results)
-    rate_limited = sum(r["status"] == "rate_limited" for r in results)
+    rate_limited = sum(
+        r["status"] == "rate_limited" for r in results
+    )
     timed_out = sum(r["status"] == "timeout" for r in results)
     errors = sum(r["status"] == "error" for r in results)
 
@@ -76,6 +130,20 @@ def run_scenario(name, request_count, workers, config):
     print("Timeouts:", timed_out)
     print("Errors:", errors)
     print("Peak queue length:", metrics["peak_queue_length"])
+
+    if streaming:
+        first_token_values = [
+            r["first_token_ms"]
+            for r in results
+            if r.get("first_token_ms") is not None
+        ]
+
+        if first_token_values:
+            print(
+                "Average first-token latency:",
+                round(sum(first_token_values) / len(first_token_values), 2),
+                "ms"
+            )
 
     return {
         "scenario": name,
@@ -90,11 +158,13 @@ def run_scenario(name, request_count, workers, config):
 
 
 def main():
+
     scenarios = [
         {
             "name": "standin_steady",
             "requests": 10,
             "workers": 1,
+            "streaming": False,
             "config": StandinConfig(
                 base_latency=0.5,
                 max_concurrent_requests=3
@@ -104,6 +174,7 @@ def main():
             "name": "standin_burst",
             "requests": 20,
             "workers": 10,
+            "streaming": False,
             "config": StandinConfig(
                 base_latency=0.5,
                 max_concurrent_requests=3
@@ -113,11 +184,22 @@ def main():
             "name": "standin_overload",
             "requests": 30,
             "workers": 20,
+            "streaming": False,
             "config": StandinConfig(
                 base_latency=0.5,
                 max_concurrent_requests=3,
                 failure_rate=0.05,
                 rate_limit_rate=0.10
+            )
+        },
+        {
+            "name": "standin_streaming",
+            "requests": 10,
+            "workers": 3,
+            "streaming": True,
+            "config": StandinConfig(
+                stream_piece_delay=0.1,
+                max_concurrent_requests=3
             )
         }
     ]
@@ -126,11 +208,13 @@ def main():
 
     for scenario in scenarios:
         result = run_scenario(
-            scenario["name"],
-            scenario["requests"],
-            scenario["workers"],
-            scenario["config"]
+            name=scenario["name"],
+            request_count=scenario["requests"],
+            workers=scenario["workers"],
+            config=scenario["config"],
+            streaming=scenario["streaming"]
         )
+
         all_results.append(result)
 
     print("\n========== FINAL SUMMARY ==========")

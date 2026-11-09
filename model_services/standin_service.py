@@ -98,26 +98,50 @@ class StandinService:
 
             self.semaphore.release()
 
+    
     def generate_stream(self, prompt):
+        """Stream a response while tracking queue and latency."""
+
         answer = f"Simulated answer for: {prompt[:100]}"
         first_token_ms = None
         start_time = time.perf_counter()
 
-        for piece in answer.split():
-            time.sleep(self.config.stream_piece_delay)
+        # Register the request in the waiting queue.
+        with self.lock:
+            self.waiting_requests += 1
+            self.peak_queue_length = max(
+                self.peak_queue_length,
+                self.waiting_requests
+            )
 
-            if first_token_ms is None:
-                first_token_ms = (
-                    time.perf_counter() - start_time
-                ) * 1000
+        self.semaphore.acquire()
 
-            yield {
-                "piece": piece + " ",
-                "first_token_ms": round(first_token_ms, 2),
-                "elapsed_ms": round(
-                    (time.perf_counter() - start_time) * 1000, 2
-                )
-            }
+        with self.lock:
+            self.waiting_requests -= 1
+            self.active_requests += 1
+
+        try:
+            for piece in answer.split():
+                time.sleep(self.config.stream_piece_delay)
+
+                if first_token_ms is None:
+                    first_token_ms = (
+                        time.perf_counter() - start_time
+                    ) * 1000
+
+                yield {
+                    "piece": piece + " ",
+                    "first_token_ms": round(first_token_ms, 2),
+                    "elapsed_ms": round(
+                        (time.perf_counter() - start_time) * 1000, 2
+                    )
+                }
+
+        finally:
+            with self.lock:
+                self.active_requests -= 1
+
+            self.semaphore.release()
 
     def get_metrics(self):
         with self.lock:
