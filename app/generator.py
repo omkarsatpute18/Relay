@@ -1,7 +1,8 @@
 
 import json
-from model_services.groq_service import GroqService
 import re
+
+from model_services.groq_service import GroqService
 
 
 class AnswerGenerator:
@@ -15,7 +16,8 @@ class AnswerGenerator:
             return {
                 "status": "refused_correctly",
                 "answer": None,
-                "citations": []
+                "citations": [],
+                "retries": 0,
             }
 
         context_parts = []
@@ -24,7 +26,6 @@ class AnswerGenerator:
         for index, item in enumerate(evidence, start=1):
 
             source_label = f"S{index}"
-
             source_map[source_label] = item
 
             context_parts.append(
@@ -53,8 +54,7 @@ direct evidence to answer the question.
 If sufficient evidence exists:
 - Set answerable to true.
 - Provide a clear answer.
-- Include only source labels that support
-  the answer's claims.
+- Include only source labels that support the answer's claims.
 
 If sufficient evidence does not exist:
 - Set answerable to false.
@@ -91,46 +91,48 @@ RESEARCH PASSAGES:
 """
 
         response = self.groq.generate_with_retries(
-        messages=[
-        {
-            "role": "system",
-            "content": system_prompt
-        },
-        {
-            "role": "user",
-            "content": user_prompt
-        }
-    ],
-    max_tokens=800,
-    max_attempts=3,
-    max_retry_wait_seconds=10,
-    base_backoff_seconds=1
-)
-        
+            messages=[
+                {
+                    "role": "system",
+                    "content": system_prompt
+                },
+                {
+                    "role": "user",
+                    "content": user_prompt
+                }
+            ],
+            max_tokens=800,
+            max_attempts=3,
+            max_retry_wait_seconds=10,
+            base_backoff_seconds=1
+        )
 
         if response["status"] != "ok":
             return {
-            "status": response["status"],
-            "answer": None,
-            "citations": [],
-            "error": response.get("error"),
-            "model": response.get("model"),
-            "total_ms": response.get("total_ms"),
-            "first_token_ms": response.get("first_token_ms"),
-            "tokens_in": response.get("tokens_in"),
-            "tokens_out": response.get("tokens_out"),
-            "retries": response.get("retries", 0),
-            "retry_after_seconds": response.get("retry_after_seconds"),
-            "rate_limit_headers": response.get("rate_limit_headers", {}),
-            "retries": response.get("retries", 0),
-}
+                "status": response["status"],
+                "answer": None,
+                "citations": [],
+                "error": response.get("error"),
+                "model": response.get("model"),
+                "total_ms": response.get("total_ms"),
+                "first_token_ms": response.get("first_token_ms"),
+                "tokens_in": response.get("tokens_in"),
+                "tokens_out": response.get("tokens_out"),
+                "retries": response.get("retries", 0),
+                "retry_after_seconds": response.get(
+                    "retry_after_seconds"
+                ),
+                "rate_limit_headers": response.get(
+                    "rate_limit_headers", {}
+                ),
+            }
 
         try:
 
             raw_json = response["answer"]
 
-            # Escape invalid backslashes inside JSON strings.
-            # Preserve valid JSON escape sequences.
+            # Escape invalid backslashes while preserving valid
+            # JSON escape sequences.
             raw_json = re.sub(
                 r'\\(?!["\\/bfnrtu])',
                 r'\\\\',
@@ -159,10 +161,12 @@ RESEARCH PASSAGES:
                         "sufficient evidence to answer this question."
                     ),
                     "citations": [],
-                    "model": response["model"],
-                    "total_ms": response["total_ms"],
-                    "tokens_in": response["tokens_in"],
-                    "tokens_out": response["tokens_out"]
+                    "model": response.get("model"),
+                    "total_ms": response.get("total_ms"),
+                    "first_token_ms": response.get("first_token_ms"),
+                    "tokens_in": response.get("tokens_in"),
+                    "tokens_out": response.get("tokens_out"),
+                    "retries": response.get("retries", 0),
                 }
 
             answer = result.get("answer", "").strip()
@@ -204,10 +208,12 @@ RESEARCH PASSAGES:
                 "status": "ok",
                 "answer": answer,
                 "citations": citations,
-                "model": response["model"],
-                "total_ms": response["total_ms"],
-                "tokens_in": response["tokens_in"],
-                "tokens_out": response["tokens_out"]
+                "model": response.get("model"),
+                "total_ms": response.get("total_ms"),
+                "first_token_ms": response.get("first_token_ms"),
+                "tokens_in": response.get("tokens_in"),
+                "tokens_out": response.get("tokens_out"),
+                "retries": response.get("retries", 0),
             }
 
         except (ValueError, TypeError, json.JSONDecodeError) as error:
@@ -222,5 +228,5 @@ RESEARCH PASSAGES:
                 "first_token_ms": response.get("first_token_ms"),
                 "tokens_in": response.get("tokens_in"),
                 "tokens_out": response.get("tokens_out"),
-                "retries": response.get("retries", 0)
+                "retries": response.get("retries", 0),
             }
