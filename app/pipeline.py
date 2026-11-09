@@ -160,23 +160,27 @@ class RelayPipeline:
                 "_metrics": metrics,
             }
 
-        # STEP 5: Validate citations.
+        
+# STEP 5: Validate citations.
         citations = generated.get("citations", [])
 
         validation = self.validator.validate(
-            citations,
+            generated,
             retrieved_chunks,
         )
 
-        if not validation:
+        if not validation.get("valid", False):
 
             return {
-                "status": "validation_failed",
-                "answer": generated.get("answer", ""),
-                "citations": citations,
-                "error": "Citation validation failed.",
-                "_metrics": metrics,
-            }
+        "status": "validation_failed",
+        "answer": generated.get("answer", ""),
+        "citations": citations,
+        "error": validation.get(
+            "reason",
+            "Citation validation failed."
+        ),
+        "_metrics": metrics,
+    }
 
         # STEP 6: Return the final answer.
         return {

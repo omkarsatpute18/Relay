@@ -542,3 +542,13 @@ cde0127c-7db0-415b-9c90-bcea63242121,real_baseline_retry,real,2026-11-09T17:54:5
 f8b97231-8e43-42a4-92a7-14ea1ddc845f,real_baseline_retry,real,2026-11-09T17:55:13.821512+00:00,,9456.35939994827,ok,1,1290,83,bm25_top3_then_top8,refused_correctly
 6de3a635-df03-4074-9b73-9b925f4deb95,real_baseline_retry,real,2026-11-09T17:55:25.279854+00:00,,8492.10669985041,ok,1,1652,110,bm25_top3_then_top8,refused_correctly
 746a4002-e5f1-417c-9b7a-ebb5d0ca098b,real_baseline_retry,real,2026-11-09T17:55:35.773982+00:00,,56.264800019562244,rate_limited,0,,,bm25_top3_then_top8,
+62f20de7-c3f8-4bb4-b53f-8686aaf62d41,real_baseline_retry,real,2026-11-09T17:58:16.941442+00:00,,1983.9431000873446,ok,0,1575,185,bm25_top3_then_top8,
+c8fe347b-90c3-47e7-924e-0df63053f0ab,real_baseline_retry,real,2026-11-09T17:58:20.956719+00:00,,876.4317999593914,ok,0,1591,357,bm25_top3_then_top8,
+3d4a92f5-a0ae-437c-bdb4-6dd2416f9d14,real_baseline_retry,real,2026-11-09T17:58:23.836373+00:00,,558.9592999313027,ok,0,1554,139,bm25_top3_then_top8,
+67c000e1-7084-4d9e-befb-d4e0a63d208e,real_baseline_retry,real,2026-11-09T17:58:26.397616+00:00,,1202.4753999430686,ok,0,1659,550,bm25_top3_then_top8,
+2744294b-ba51-41ad-9bdb-2e6ffb53da28,real_baseline_retry,real,2026-11-09T17:58:29.602559+00:00,,836.9682000484318,ok,0,1638,285,bm25_top3_then_top8,
+35d6e7ed-a720-494d-98a9-4c6bf267361c,real_baseline_retry,real,2026-11-09T17:58:32.441823+00:00,,60.78890012577176,rate_limited,0,,,bm25_top3_then_top8,
+30498726-3b2f-451c-a30b-17bf90ec4c6d,real_baseline_retry,real,2026-11-09T17:58:34.504353+00:00,,11439.80469997041,ok,2,1620,283,bm25_top3_then_top8,
+a03155ce-a81c-446f-8f13-d8dbad423c19,real_baseline_retry,real,2026-11-09T17:58:47.946154+00:00,,10210.758899804205,ok,1,1290,85,bm25_top3_then_top8,refused_correctly
+fc2d4ae0-3e9a-428e-8b0e-2c6c6a47672e,real_baseline_retry,real,2026-11-09T17:59:00.158656+00:00,,8853.432100033388,ok,1,1652,100,bm25_top3_then_top8,refused_correctly
+9eb0a4c4-9584-4937-80bb-bbff83841802,real_baseline_retry,real,2026-11-09T17:59:11.014169+00:00,,9610.908499918878,ok,1,1701,153,bm25_top3_then_top8,refused_correctly
