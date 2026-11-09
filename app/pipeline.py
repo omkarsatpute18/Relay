@@ -1,39 +1,128 @@
 
+import time
+from datetime import datetime, timezone
+
 from app.query_analyzer import analyze_query
 from app.retriever import PaperRetriever
 from app.decision_engine import DecisionEngine
 from app.generator import AnswerGenerator
 from app.validator import CitationValidator
+from app.csv_logger import CSVLogger
 
 
 class RelayPipeline:
+
+    RETRIEVAL_SETTING = (
+        "BM25_chunk500_top3_retry8_threshold1.0"
+    )
 
     def __init__(self):
 
         print("Initializing The Relay...")
 
-        # Initialize retrieval tool
         self.retriever = PaperRetriever()
 
-        # Initialize decision engine
         self.decision_engine = DecisionEngine(
             self.retriever,
             minimum_score=1.0
         )
 
-        # Initialize answer generator
         self.generator = AnswerGenerator()
-
-        # Initialize citation validator
         self.validator = CitationValidator()
+        self.csv_logger = CSVLogger()
 
         print("The Relay is ready!")
 
-    def process(self, question):
+    def process(
+        self,
+        question,
+        scenario="functional_baseline"
+    ):
+
+        # Measure the complete pipeline request.
+        start_clock = time.perf_counter()
+
+        start_time = datetime.now(
+            timezone.utc
+        ).isoformat()
+
+        try:
+
+            result = self._process(question)
+
+        except Exception as error:
+
+            result = {
+                "status": "error",
+                "question": question,
+                "answer": (
+                    "The application encountered an "
+                    "unexpected error."
+                ),
+                "citations": [],
+                "error": str(error)
+            }
+
+        total_ms = round(
+            (time.perf_counter() - start_clock) * 1000,
+            2
+        )
+
+        metrics = result.pop("_metrics", {})
+
+        # Convert pipeline outcomes into the assignment's
+        # permitted CSV status values.
+        pipeline_status = result.get("status", "error")
+
+        if pipeline_status in {
+            "ok",
+            "refused_correctly"
+        }:
+            csv_status = "ok"
+
+        elif pipeline_status in {
+            "rate_limited",
+            "timeout"
+        }:
+            csv_status = pipeline_status
+
+        else:
+            csv_status = "error"
+
+        # Record correct refusals separately from API failures.
+        if pipeline_status == "refused_correctly":
+            answer_grade = "refused_correctly"
+        else:
+            answer_grade = ""
+
+        request_id = self.csv_logger.log_request(
+            scenario=scenario,
+            source="real",
+            start_time=start_time,
+            first_token_ms=metrics.get("first_token_ms"),
+            total_ms=total_ms,
+            status=csv_status,
+            retries=metrics.get("retries", 0),
+            tokens_in=metrics.get("tokens_in"),
+            tokens_out=metrics.get("tokens_out"),
+            retrieval_setting=self.RETRIEVAL_SETTING,
+            answer_grade=answer_grade
+        )
+
+        result["request_id"] = request_id
+        result["total_ms"] = total_ms
+
+        print(
+            f"\nCSV log saved. Request ID: {request_id}"
+        )
+
+        return result
+
+    def _process(self, question):
 
         print("\nProcessing user question...")
 
-        # STEP 1: Analyze query
+        # STEP 1: Analyze query.
         query_data = analyze_query(question)
 
         print(
@@ -41,7 +130,7 @@ class RelayPipeline:
             query_data["question_type"]
         )
 
-        # STEP 2 and 3: Retrieve and make decision
+        # STEP 2 and 3: Retrieve evidence and make a decision.
         decision = self.decision_engine.retrieve_evidence(
             query_data["search_query"]
         )
@@ -58,7 +147,7 @@ class RelayPipeline:
             len(evidence)
         )
 
-        # STEP 4: Branch if evidence is insufficient
+        # STEP 4: Refuse if retrieval finds insufficient evidence.
         if not decision["sufficient"]:
 
             return {
@@ -73,41 +162,68 @@ class RelayPipeline:
                 "citations": [],
                 "retrieval_attempts": (
                     decision["retrieval_attempts"]
-                )
+                ),
+                "_metrics": {}
             }
 
-        # STEP 5: Generate response
+        # STEP 5: Generate response.
         generated = self.generator.generate(
             question,
             evidence
         )
 
-        # Handle a correct evidence-based refusal
-        if generated.get("status") == "refused_correctly":
+        generated_status = generated.get(
+            "status",
+            "error"
+        )
+
+        # Preserve the model's evidence-based refusal.
+        if generated_status == "refused_correctly":
 
             return {
                 "status": "refused_correctly",
                 "question": question,
                 "answer": generated["answer"],
                 "citations": [],
-                "retrieval_attempts": decision["retrieval_attempts"]
+                "retrieval_attempts": (
+                    decision["retrieval_attempts"]
+                ),
+                "_metrics": {
+                    "first_token_ms": generated.get(
+                        "first_token_ms"
+                    ),
+                    "tokens_in": generated.get("tokens_in"),
+                    "tokens_out": generated.get("tokens_out"),
+                    "retries": generated.get("retries", 0)
+                }
             }
 
-
-        # Handle API errors and validation failures
-        if generated.get("status") != "ok":
+        # Handle API errors and response validation failures.
+        if generated_status != "ok":
 
             return {
-                "status": generated.get("status", "error"),
+                "status": generated_status,
                 "question": question,
                 "answer": (
                     "The AI service could not complete "
                     "your request. Please try again later."
                 ),
                 "citations": [],
-                "error": generated.get("error")
-        }
-        # STEP 6: Validate citations
+                "error": generated.get("error"),
+                "retrieval_attempts": (
+                    decision["retrieval_attempts"]
+                ),
+                "_metrics": {
+                    "first_token_ms": generated.get(
+                        "first_token_ms"
+                    ),
+                    "tokens_in": generated.get("tokens_in"),
+                    "tokens_out": generated.get("tokens_out"),
+                    "retries": generated.get("retries", 0)
+                }
+            }
+
+        # STEP 6: Validate citation references and metadata.
         validation = self.validator.validate(
             generated,
             evidence
@@ -123,10 +239,21 @@ class RelayPipeline:
                     "pass citation validation."
                 ),
                 "citations": [],
-                "validation_reason": validation["reason"]
+                "validation_reason": validation["reason"],
+                "retrieval_attempts": (
+                    decision["retrieval_attempts"]
+                ),
+                "_metrics": {
+                    "first_token_ms": generated.get(
+                        "first_token_ms"
+                    ),
+                    "tokens_in": generated.get("tokens_in"),
+                    "tokens_out": generated.get("tokens_out"),
+                    "retries": generated.get("retries", 0)
+                }
             }
 
-        # STEP 7: Return final response
+        # STEP 7: Return the validated answer.
         return {
             "status": "ok",
             "question": question,
@@ -135,7 +262,15 @@ class RelayPipeline:
             "retrieval_attempts": (
                 decision["retrieval_attempts"]
             ),
-            "validation": validation
+            "validation": validation,
+            "_metrics": {
+                "first_token_ms": generated.get(
+                    "first_token_ms"
+                ),
+                "tokens_in": generated.get("tokens_in"),
+                "tokens_out": generated.get("tokens_out"),
+                "retries": generated.get("retries", 0)
+            }
         }
 
 
@@ -158,50 +293,40 @@ if __name__ == "__main__":
             print("Closing The Relay...")
             break
 
-        try:
+        result = relay.process(question)
 
-            result = relay.process(question)
+        print("\n" + "=" * 55)
+        print("FINAL RESPONSE")
+        print("=" * 55)
 
-            print("\n" + "=" * 55)
-            print("FINAL RESPONSE")
-            print("=" * 55)
+        print("Status:", result["status"])
+        print("\nAnswer:")
+        print(result["answer"])
 
-            print("Status:", result["status"])
-            if "validation_reason" in result:
-                print("Validation error:", result["validation_reason"])
+        print("\nCitations:")
 
-            if "error" in result:
-                print("Error:", result["error"])
-            print("\nAnswer:")
-            print(result["answer"])
+        for citation in result.get("citations", []):
 
-            print("\nCitations:")
+            print(
+                f"- {citation['title']} "
+                f"(arXiv:{citation['paper_id']}, "
+                f"v{citation['version']}, "
+                f"PDF page {citation['pdf_page']})"
+            )
 
-            for citation in result.get(
-                "citations", []
-            ):
+        if "validation" in result:
+            print(
+                "\nCitation validation:",
+                result["validation"]["reason"]
+            )
 
-                print(
-                    f"- {citation['title']} "
-                    f"(arXiv:{citation['paper_id']}, "
-                    f"v{citation['version']}, "
-                    f"PDF page {citation['pdf_page']})"
-                )
+        if "validation_reason" in result:
+            print(
+                "\nValidation error:",
+                result["validation_reason"]
+            )
 
-            if "validation" in result:
-                print(
-                    "\nCitation validation:",
-                    result["validation"]["reason"]
-                )
+        if "error" in result and result["error"]:
+            print("\nError:", result["error"])
 
-        except Exception as error:
-
-            print("\nPipeline error:", str(error))
-if "validation_reason" in result:
-    print(
-        "\nValidation error:",
-        result["validation_reason"]
-    )
-
-if "error" in result:
-    print("\nError:", result["error"])
+        print("\nTotal pipeline time:", result["total_ms"], "ms")

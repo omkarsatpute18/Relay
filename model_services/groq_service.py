@@ -1,6 +1,7 @@
 
 import os
 import time
+from datetime import datetime, timezone
 
 from dotenv import load_dotenv
 from groq import (
@@ -11,8 +12,6 @@ from groq import (
     APIStatusError,
 )
 
-
-# Load project environment variables
 load_dotenv()
 
 
@@ -24,14 +23,10 @@ class GroqService:
         self.model = os.getenv("MODEL_NAME")
 
         if not self.api_key:
-            raise ValueError(
-                "GROQ_API_KEY is missing from .env"
-            )
+            raise ValueError("GROQ_API_KEY is missing from .env")
 
         if not self.model:
-            raise ValueError(
-                "MODEL_NAME is missing from .env"
-            )
+            raise ValueError("MODEL_NAME is missing from .env")
 
         self.client = Groq(
             api_key=self.api_key,
@@ -42,66 +37,101 @@ class GroqService:
         print("Groq service initialized.")
         print("Selected model:", self.model)
 
-    def generate(self, messages, max_tokens=500):
+    @staticmethod
+    def _timestamp():
+        return datetime.now(timezone.utc).isoformat()
+
+    @staticmethod
+    def _headers(response):
+        if response is None:
+            return {}
+
+        headers = getattr(response, "headers", None)
+
+        if not headers:
+            return {}
+
+        # Preserve rate-limit headers for later analysis.
+        return {
+            str(key): str(value)
+            for key, value in headers.items()
+            if "ratelimit" in str(key).lower()
+            or "retry-after" in str(key).lower()
+        }
+
+    def generate(self, messages, max_tokens=800):
 
         start_time = time.perf_counter()
+        start_timestamp = self._timestamp()
 
         try:
 
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                temperature=0.1,
-                max_completion_tokens=max_tokens,
-                stream=False
+            raw_response = (
+                self.client.chat.completions
+                .with_raw_response.create(
+                    model=self.model,
+                    messages=messages,
+                    temperature=0.1,
+                    max_completion_tokens=max_tokens,
+                    stream=False
+                )
             )
 
-            end_time = time.perf_counter()
+            response = raw_response.parse()
 
-            answer = response.choices[0].message.content
+            total_ms = round(
+                (time.perf_counter() - start_time) * 1000,
+                2
+            )
 
             return {
                 "status": "ok",
-                "answer": answer,
+                "answer": response.choices[0].message.content,
                 "model": self.model,
+                "start_time": start_timestamp,
                 "first_token_ms": None,
-                "total_ms": round(
-                    (end_time - start_time) * 1000, 2
-                ),
+                "total_ms": total_ms,
                 "tokens_in": response.usage.prompt_tokens,
                 "tokens_out": response.usage.completion_tokens,
+                "finish_reason": response.choices[0].finish_reason,
+                "http_status": 200,
+                "rate_limit_headers": self._headers(raw_response),
+                "retries": 0,
                 "error": None
             }
 
         except RateLimitError as error:
-
             return self._error_result(
-                "rate_limited", error
+                "rate_limited", error, start_time, start_timestamp
             )
 
         except APITimeoutError as error:
-
             return self._error_result(
-                "timeout", error
+                "timeout", error, start_time, start_timestamp
             )
 
         except APIConnectionError as error:
-
             return self._error_result(
-                "error", error
+                "error", error, start_time, start_timestamp
             )
 
         except APIStatusError as error:
-
             return self._error_result(
-                "error", error
+                "error", error, start_time, start_timestamp
             )
 
-    def generate_stream(self, messages, max_tokens=500):
+        except Exception as error:
+            return self._error_result(
+                "error", error, start_time, start_timestamp
+            )
+
+    def generate_stream(self, messages, max_tokens=800):
 
         start_time = time.perf_counter()
+        start_timestamp = self._timestamp()
         first_token_ms = None
         full_answer = ""
+        rate_limit_headers = {}
 
         try:
 
@@ -124,13 +154,11 @@ class GroqService:
 
                     if first_token_ms is None:
                         first_token_ms = round(
-                            (time.perf_counter() - start_time)
-                            * 1000,
+                            (time.perf_counter() - start_time) * 1000,
                             2
                         )
 
                     full_answer += content
-
                     print(content, end="", flush=True)
 
             total_ms = round(
@@ -142,48 +170,68 @@ class GroqService:
                 "status": "ok",
                 "answer": full_answer,
                 "model": self.model,
+                "start_time": start_timestamp,
                 "first_token_ms": first_token_ms,
                 "total_ms": total_ms,
                 "tokens_in": None,
                 "tokens_out": None,
+                "finish_reason": None,
+                "http_status": 200,
+                "rate_limit_headers": rate_limit_headers,
+                "retries": 0,
                 "error": None
             }
 
         except RateLimitError as error:
-
             return self._error_result(
-                "rate_limited", error
+                "rate_limited", error, start_time, start_timestamp
             )
 
         except APITimeoutError as error:
-
             return self._error_result(
-                "timeout", error
+                "timeout", error, start_time, start_timestamp
             )
 
         except APIConnectionError as error:
-
             return self._error_result(
-                "error", error
+                "error", error, start_time, start_timestamp
             )
 
         except APIStatusError as error:
-
             return self._error_result(
-                "error", error
+                "error", error, start_time, start_timestamp
+            )
+
+        except Exception as error:
+            return self._error_result(
+                "error", error, start_time, start_timestamp
             )
 
     @staticmethod
-    def _error_result(status, error):
+    def _error_result(
+        status, error, start_time, start_timestamp
+    ):
+
+        elapsed_ms = round(
+            (time.perf_counter() - start_time) * 1000,
+            2
+        )
+
+        http_status = getattr(error, "status_code", None)
 
         return {
             "status": status,
             "answer": None,
             "model": None,
+            "start_time": start_timestamp,
             "first_token_ms": None,
-            "total_ms": None,
+            "total_ms": elapsed_ms,
             "tokens_in": None,
             "tokens_out": None,
+            "finish_reason": None,
+            "http_status": http_status,
+            "rate_limit_headers": {},
+            "retries": 0,
             "error": str(error)
         }
 
@@ -195,16 +243,11 @@ if __name__ == "__main__":
     messages = [
         {
             "role": "system",
-            "content": (
-                "You are a helpful research assistant. "
-                "Answer accurately and concisely."
-            )
+            "content": "Answer accurately and concisely."
         },
         {
             "role": "user",
-            "content": (
-                "Explain multi-head attention in simple terms."
-            )
+            "content": "Explain multi-head attention briefly."
         }
     ]
 
@@ -212,32 +255,22 @@ if __name__ == "__main__":
 
     result = service.generate(messages)
 
-    print("\nStatus:", result["status"])
-    print("Answer:", result["answer"])
-    print("Model:", result["model"])
-    print("Total time:", result["total_ms"], "ms")
-    print("Input tokens:", result["tokens_in"])
-    print("Output tokens:", result["tokens_out"])
+    for key, value in result.items():
+        if key != "error":
+            print(f"{key}: {value}")
 
     if result["error"]:
-        print("\nERROR DETAILS:")
-        print(result["error"])
+        print("Error:", result["error"])
+
     print("\nTesting streaming generation...")
 
     stream_result = service.generate_stream(messages)
 
-    print("\n\nStreaming status:", stream_result["status"])
-    print(
-        "Time to first token:",
-        stream_result["first_token_ms"],
-        "ms"
-    )
-    print(
-        "Total streaming time:",
-        stream_result["total_ms"],
-        "ms"
-    )
+    print("\n")
+
+    for key, value in stream_result.items():
+        if key != "error":
+            print(f"{key}: {value}")
 
     if stream_result["error"]:
-        print("\nSTREAMING ERROR:")
-        print(stream_result["error"])
+        print("Streaming error:", stream_result["error"])
