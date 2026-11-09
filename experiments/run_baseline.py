@@ -50,8 +50,27 @@ def run_baseline():
             print("Error:", result["error"])
 
         if index < total:
-            print("Waiting 2 seconds before next request...")
-            time.sleep(2)
+
+            retry_after = result.get("retry_after_seconds")
+
+        if retry_after is not None:
+            wait_seconds = retry_after + 0.5
+
+            print(
+            f"Provider suggested waiting "
+            f"{retry_after:.2f} seconds."
+        )
+
+        print(
+            f"Waiting {wait_seconds:.2f} seconds "
+            "including a 0.5-second safety margin..."
+        )
+
+        time.sleep(wait_seconds)
+
+    else:
+        print("Waiting 2 seconds before next request...")
+        time.sleep(2)
 
     print("\n" + "=" * 60)
     print("BASELINE EXPERIMENT COMPLETED")

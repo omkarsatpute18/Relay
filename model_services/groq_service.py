@@ -1,4 +1,4 @@
-
+import re
 import os
 import time
 from datetime import datetime, timezone
@@ -36,6 +36,71 @@ class GroqService:
 
         print("Groq service initialized.")
         print("Selected model:", self.model)
+
+    
+    @staticmethod
+    def _extract_retry_information(error):
+
+        response = getattr(error, "response", None)
+        headers = getattr(response, "headers", {}) or {}
+
+        # Preserve provider rate-limit and retry headers.
+        useful_headers = {
+            str(key): str(value)
+            for key, value in headers.items()
+            if (
+                "ratelimit" in str(key).lower()
+                or "retry-after" in str(key).lower()
+            )
+        }
+
+        retry_after = None
+
+        # First preference: explicit Retry-After header.
+        header_value = headers.get("retry-after")
+
+        if header_value:
+            try:
+                retry_after = float(header_value)
+            except (TypeError, ValueError):
+                pass
+
+        error_text = str(error)
+
+        # Second preference: recovery duration in the error message.
+        if retry_after is None:
+            match = re.search(
+                r"try again in\s+([\d.]+)\s*s",
+                error_text,
+                re.IGNORECASE
+            )
+
+            if match:
+                retry_after = float(match.group(1))
+
+        # Third preference: token-window reset header.
+        if retry_after is None:
+            reset_value = None
+
+            for key, value in useful_headers.items():
+                if key.lower() == "x-ratelimit-reset-tokens":
+                    reset_value = value
+                    break
+
+            if reset_value:
+                match = re.fullmatch(
+                    r"(?:(\d+(?:\.\d+)?)m)?"
+                    r"(?:(\d+(?:\.\d+)?)s)?",
+                    reset_value.strip()
+                )
+
+                if match:
+                    minutes = float(match.group(1) or 0)
+                    seconds = float(match.group(2) or 0)
+                    retry_after = minutes * 60 + seconds
+
+        return retry_after, useful_headers
+
 
     @staticmethod
     def _timestamp():
@@ -207,6 +272,7 @@ class GroqService:
                 "error", error, start_time, start_timestamp
             )
 
+    
     @staticmethod
     def _error_result(
         status, error, start_time, start_timestamp
@@ -219,6 +285,10 @@ class GroqService:
 
         http_status = getattr(error, "status_code", None)
 
+        retry_after, rate_limit_headers = (
+            GroqService._extract_retry_information(error)
+        )
+
         return {
             "status": status,
             "answer": None,
@@ -230,10 +300,12 @@ class GroqService:
             "tokens_out": None,
             "finish_reason": None,
             "http_status": http_status,
-            "rate_limit_headers": {},
+            "rate_limit_headers": rate_limit_headers,
+            "retry_after_seconds": retry_after,
             "retries": 0,
             "error": str(error)
         }
+
 
 
 if __name__ == "__main__":

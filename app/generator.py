@@ -107,11 +107,19 @@ RESEARCH PASSAGES:
 
         if response["status"] != "ok":
             return {
-                "status": response["status"],
-                "answer": None,
-                "citations": [],
-                "error": response["error"]
-            }
+            "status": response["status"],
+            "answer": None,
+            "citations": [],
+            "error": response.get("error"),
+            "model": response.get("model"),
+            "total_ms": response.get("total_ms"),
+            "first_token_ms": response.get("first_token_ms"),
+            "tokens_in": response.get("tokens_in"),
+            "tokens_out": response.get("tokens_out"),
+            "retries": response.get("retries", 0),
+            "retry_after_seconds": response.get("retry_after_seconds"),
+            "rate_limit_headers": response.get("rate_limit_headers", {})
+}
 
         try:
 

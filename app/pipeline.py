@@ -202,25 +202,28 @@ class RelayPipeline:
         if generated_status != "ok":
 
             return {
-                "status": generated_status,
-                "question": question,
-                "answer": (
-                    "The AI service could not complete "
-                    "your request. Please try again later."
-                ),
-                "citations": [],
-                "error": generated.get("error"),
-                "retrieval_attempts": (
-                    decision["retrieval_attempts"]
-                ),
-                "_metrics": {
-                    "first_token_ms": generated.get("first_token_ms"),
-                    "tokens_in": generated.get("tokens_in"),
-                    "tokens_out": generated.get("tokens_out"),
-                    "retries": generated.get("retries", 0)
-                }
+            "status": generated_status,
+            "question": question,
+            "answer": (
+                "The AI service could not complete "
+                "your request. Please try again later."
+            ),
+            "citations": [],
+            "error": generated.get("error"),
+            "retry_after_seconds": generated.get(
+                "retry_after_seconds"
+            ),
+            "rate_limit_headers": generated.get(
+                "rate_limit_headers", {}
+            ),
+            "retrieval_attempts": decision["retrieval_attempts"],
+            "_metrics": {
+                "first_token_ms": generated.get("first_token_ms"),
+                "tokens_in": generated.get("tokens_in"),
+                "tokens_out": generated.get("tokens_out"),
+                "retries": generated.get("retries", 0)
             }
-
+        }
         # STEP 6: Validate citation references and metadata.
         validation = self.validator.validate(
             generated,
