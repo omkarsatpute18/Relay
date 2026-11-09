@@ -1,6 +1,7 @@
 
 import json
 from model_services.groq_service import GroqService
+import re
 
 
 class AnswerGenerator:
@@ -71,6 +72,14 @@ Return ONLY valid JSON in this exact structure:
   "answer": "Your answer with source labels such as [S1].",
   "used_sources": ["S1"]
 }
+
+IMPORTANT FORMATTING RULES:
+- Return valid JSON only.
+- Do not use Markdown code fences.
+- Do not use LaTeX notation.
+- Avoid backslash characters in the answer.
+- Write mathematical expressions in plain text.
+- Escape quotation marks inside JSON strings.
 """
 
         user_prompt = f"""
@@ -106,7 +115,17 @@ RESEARCH PASSAGES:
 
         try:
 
-            result = json.loads(response["answer"])
+            raw_json = response["answer"]
+
+            # Escape invalid backslashes inside JSON strings.
+            # Preserve valid JSON escape sequences.
+            raw_json = re.sub(
+                r'\\(?!["\\/bfnrtu])',
+                r'\\\\',
+                raw_json
+            )
+
+            result = json.loads(raw_json)
 
             if not isinstance(result.get("answerable"), bool):
                 raise ValueError("Invalid answerable field")
