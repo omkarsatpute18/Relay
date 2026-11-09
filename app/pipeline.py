@@ -82,6 +82,19 @@ class RelayPipeline:
             evidence
         )
 
+        if generated.get("status") != "ok":
+
+            return {
+                "status": generated.get("status", "error"),
+                "question": question,
+                "answer": (
+                    "The AI service could not complete "
+                    "your request. Please try again later."
+                ),
+                "citations": [],
+                "error": generated.get("error")
+            }
+
         # STEP 6: Validate citations
         validation = self.validator.validate(
             generated,
