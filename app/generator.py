@@ -204,6 +204,11 @@ RESEARCH PASSAGES:
                 "status": "validation_failed",
                 "answer": None,
                 "citations": [],
-                "error": str(error)
+                "error": str(error),
+                "model": response.get("model"),
+                "total_ms": response.get("total_ms"),
+                "first_token_ms": response.get("first_token_ms"),
+                "tokens_in": response.get("tokens_in"),
+                "tokens_out": response.get("tokens_out"),
+                "retries": response.get("retries", 0)
             }
-        
