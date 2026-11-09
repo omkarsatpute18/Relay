@@ -94,6 +94,7 @@ class RelayPipeline:
                 "citations": [],
                 "error": generated.get("error")
             }
+        print("DEBUG - Generated response:", generated)
 
         # STEP 6: Validate citations
         validation = self.validator.validate(
