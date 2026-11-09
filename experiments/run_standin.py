@@ -13,6 +13,9 @@ from app.csv_logger import CSVLogger
 
 logger = CSVLogger()
 
+# Generate one unique ID for this complete experiment run.
+RUN_ID = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+
 
 def run_one_request(service, request_number, scenario):
     """Run a normal request with failure and rate-limit simulation."""
@@ -92,7 +95,6 @@ def run_scenario(name, request_count, workers, config, streaming=False):
     print(f"\nStarting scenario: {name}")
 
     service = StandinService(config)
-
     start_time = time.perf_counter()
 
     request_function = (
@@ -141,7 +143,10 @@ def run_scenario(name, request_count, workers, config, streaming=False):
         if first_token_values:
             print(
                 "Average first-token latency:",
-                round(sum(first_token_values) / len(first_token_values), 2),
+                round(
+                    sum(first_token_values) / len(first_token_values),
+                    2
+                ),
                 "ms"
             )
 
@@ -207,8 +212,11 @@ def main():
     all_results = []
 
     for scenario in scenarios:
+
+        unique_scenario_name = f"{scenario['name']}_{RUN_ID}"
+
         result = run_scenario(
-            name=scenario["name"],
+            name=unique_scenario_name,
             request_count=scenario["requests"],
             workers=scenario["workers"],
             config=scenario["config"],
