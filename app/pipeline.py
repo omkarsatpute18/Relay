@@ -82,6 +82,19 @@ class RelayPipeline:
             evidence
         )
 
+        # Handle a correct evidence-based refusal
+        if generated.get("status") == "refused_correctly":
+
+            return {
+                "status": "refused_correctly",
+                "question": question,
+                "answer": generated["answer"],
+                "citations": [],
+                "retrieval_attempts": decision["retrieval_attempts"]
+            }
+
+
+        # Handle API errors and validation failures
         if generated.get("status") != "ok":
 
             return {
@@ -93,9 +106,7 @@ class RelayPipeline:
                 ),
                 "citations": [],
                 "error": generated.get("error")
-            }
-        print("DEBUG - Generated response:", generated)
-
+        }
         # STEP 6: Validate citations
         validation = self.validator.validate(
             generated,
@@ -109,8 +120,7 @@ class RelayPipeline:
                 "question": question,
                 "answer": (
                     "The generated response could not "
-                    "pass citation validation. "
-                    "It has not been returned as a verified answer."
+                    "pass citation validation."
                 ),
                 "citations": [],
                 "validation_reason": validation["reason"]

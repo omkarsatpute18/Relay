@@ -94,15 +94,8 @@ RESEARCH PASSAGES:
             ],
             max_tokens=800
         )
-        print("\nDEBUG - Raw Groq response:")
-        print(response)
-
-        print("\nDEBUG - Response status:", response.get("status"))
-        print("DEBUG - Response error:", response.get("error"))
-        print("DEBUG - Response answer:", response.get("answer"))
-
-
         
+
         if response["status"] != "ok":
             return {
                 "status": response["status"],
