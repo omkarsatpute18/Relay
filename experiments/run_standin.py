@@ -231,7 +231,22 @@ def main():
                 timeout_rate=0.0,
                 rate_limit_rate=0.0
             )
-        }
+        },
+        {
+    "name": "standin_daily_exhausted",
+    "requests": 10,
+    "workers": 1,
+    "streaming": False,
+    "config": StandinConfig(
+        base_latency=0.1,
+        max_concurrent_requests=3,
+        requests_per_day=5,
+        daily_window_seconds=86400,
+        failure_rate=0.0,
+        timeout_rate=0.0,
+        rate_limit_rate=0.0
+    )
+},
     ]
 
     all_results = []
