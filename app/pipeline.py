@@ -167,6 +167,11 @@ if __name__ == "__main__":
             print("=" * 55)
 
             print("Status:", result["status"])
+            if "validation_reason" in result:
+                print("Validation error:", result["validation_reason"])
+
+            if "error" in result:
+                print("Error:", result["error"])
             print("\nAnswer:")
             print(result["answer"])
 
@@ -192,3 +197,11 @@ if __name__ == "__main__":
         except Exception as error:
 
             print("\nPipeline error:", str(error))
+if "validation_reason" in result:
+    print(
+        "\nValidation error:",
+        result["validation_reason"]
+    )
+
+if "error" in result:
+    print("\nError:", result["error"])
