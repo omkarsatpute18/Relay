@@ -17,10 +17,11 @@ class StandinConfig:
     rate_limit_rate: float = 0.0
     stream_piece_delay: float = 0.1
 
-    # Request quota settings.
-    # None disables the per-minute quota.
     requests_per_minute: Optional[int] = None
+    requests_per_day: Optional[int] = None
+
     rate_limit_window_seconds: float = 60.0
+    daily_window_seconds: float = 86400.0
 
 
 class StandinService:
@@ -36,74 +37,94 @@ class StandinService:
         self.peak_queue_length = 0
 
         self.lock = threading.Lock()
-
-        # Stores arrival timestamps for the sliding-window limiter.
-        self.request_timestamps = deque()
         self.rate_limit_lock = threading.Lock()
 
+        self.minute_timestamps = deque()
+        self.daily_timestamps = deque()
+
     def _check_request_quota(self):
-        """Check and reserve a request against the configured quota."""
-
-        limit = self.config.requests_per_minute
-
-        if limit is None:
-            return None
-
-        if limit <= 0:
-            raise ValueError("requests_per_minute must be greater than zero")
+        """Atomically check and reserve both request quotas."""
 
         now = time.monotonic()
-        window = self.config.rate_limit_window_seconds
+
+        minute_limit = self.config.requests_per_minute
+        daily_limit = self.config.requests_per_day
+
+        minute_window = self.config.rate_limit_window_seconds
+        daily_window = self.config.daily_window_seconds
+
+        if minute_limit is not None and minute_limit <= 0:
+            raise ValueError("requests_per_minute must be positive")
+
+        if daily_limit is not None and daily_limit <= 0:
+            raise ValueError("requests_per_day must be positive")
+
+        if minute_window <= 0 or daily_window <= 0:
+            raise ValueError("Quota windows must be positive")
 
         with self.rate_limit_lock:
 
-            # Remove requests outside the current time window.
+            # Remove timestamps outside the rolling minute window.
             while (
-                self.request_timestamps
-                and now - self.request_timestamps[0] >= window
+                self.minute_timestamps
+                and now - self.minute_timestamps[0] >= minute_window
             ):
-                self.request_timestamps.popleft()
+                self.minute_timestamps.popleft()
 
-            # Reject requests when the quota is exhausted.
-            if len(self.request_timestamps) >= limit:
-                retry_after = (
-                    self.request_timestamps[0] + window - now
+            # Remove timestamps outside the rolling 24-hour window.
+            while (
+                self.daily_timestamps
+                and now - self.daily_timestamps[0] >= daily_window
+            ):
+                self.daily_timestamps.popleft()
+
+            retry_delays = []
+            exceeded_limits = []
+
+            if (
+                minute_limit is not None
+                and len(self.minute_timestamps) >= minute_limit
+            ):
+                retry_delays.append(
+                    self.minute_timestamps[0] + minute_window - now
                 )
+                exceeded_limits.append("per-minute")
 
+            if (
+                daily_limit is not None
+                and len(self.daily_timestamps) >= daily_limit
+            ):
+                retry_delays.append(
+                    self.daily_timestamps[0] + daily_window - now
+                )
+                exceeded_limits.append("daily")
+
+            # Do not reserve either quota if one or both are exhausted.
+            if exceeded_limits:
                 return {
                     "status": "rate_limited",
                     "answer": None,
                     "total_ms": 0,
-                    "error": "Simulated per-minute request limit exceeded",
+                    "error": (
+                        "Simulated quota exhausted: "
+                        + ", ".join(exceeded_limits)
+                    ),
                     "retry_after_seconds": round(
-                        max(0, retry_after), 2
-                    )
+                        max(0, max(retry_delays)), 2
+                    ),
+                    "limit_type": ", ".join(exceeded_limits)
                 }
 
-            # Reserve a position in the request quota.
-            self.request_timestamps.append(now)
+            # Reserve the request in every enabled quota.
+            if minute_limit is not None:
+                self.minute_timestamps.append(now)
+
+            if daily_limit is not None:
+                self.daily_timestamps.append(now)
 
         return None
 
-    def generate(self, prompt):
-
-        # Apply the request quota before acquiring a concurrency slot.
-        quota_result = self._check_request_quota()
-
-        if quota_result:
-            return quota_result
-
-        # Preserve the original random rate-limit simulation.
-        if random.random() < self.config.rate_limit_rate:
-            return {
-                "status": "rate_limited",
-                "answer": None,
-                "total_ms": 0,
-                "error": "Simulated random rate limit (HTTP 429)",
-                "retry_after_seconds": 1
-            }
-
-        # Register the request as waiting.
+    def _register_waiting_request(self):
         with self.lock:
             self.waiting_requests += 1
             self.peak_queue_length = max(
@@ -111,12 +132,40 @@ class StandinService:
                 self.waiting_requests
             )
 
+    def _acquire_request_slot(self):
         self.semaphore.acquire()
 
         with self.lock:
             self.waiting_requests -= 1
             self.active_requests += 1
-            current_load = self.active_requests
+            return self.active_requests
+
+    def _release_request_slot(self):
+        with self.lock:
+            self.active_requests -= 1
+
+        self.semaphore.release()
+
+    def generate(self, prompt):
+        """Generate a normal response with quota and failure simulation."""
+
+        quota_result = self._check_request_quota()
+
+        if quota_result:
+            return quota_result
+
+        if random.random() < self.config.rate_limit_rate:
+            return {
+                "status": "rate_limited",
+                "answer": None,
+                "total_ms": 0,
+                "error": "Simulated random rate limit (HTTP 429)",
+                "retry_after_seconds": 1,
+                "limit_type": "random"
+            }
+
+        self._register_waiting_request()
+        current_load = self._acquire_request_slot()
 
         start_time = time.perf_counter()
 
@@ -158,33 +207,61 @@ class StandinService:
             }
 
         finally:
-            with self.lock:
-                self.active_requests -= 1
-
-            self.semaphore.release()
+            self._release_request_slot()
 
     def generate_stream(self, prompt):
-        """Stream a response while tracking queue and latency."""
+        """Stream a response while applying the same request quotas."""
+
+        quota_result = self._check_request_quota()
+
+        if quota_result:
+            yield {
+                "status": quota_result["status"],
+                "piece": "",
+                "error": quota_result["error"],
+                "retry_after_seconds": quota_result[
+                    "retry_after_seconds"
+                ],
+                "limit_type": quota_result["limit_type"]
+            }
+            return
+
+        if random.random() < self.config.rate_limit_rate:
+            yield {
+                "status": "rate_limited",
+                "piece": "",
+                "error": "Simulated random rate limit (HTTP 429)",
+                "retry_after_seconds": 1,
+                "limit_type": "random"
+            }
+            return
+
+        self._register_waiting_request()
+        self._acquire_request_slot()
+
+        start_time = time.perf_counter()
+        first_token_ms = None
 
         answer = f"Simulated answer for: {prompt[:100]}"
-        first_token_ms = None
-        start_time = time.perf_counter()
-
-        # Register the request in the waiting queue.
-        with self.lock:
-            self.waiting_requests += 1
-            self.peak_queue_length = max(
-                self.peak_queue_length,
-                self.waiting_requests
-            )
-
-        self.semaphore.acquire()
-
-        with self.lock:
-            self.waiting_requests -= 1
-            self.active_requests += 1
 
         try:
+            if random.random() < self.config.failure_rate:
+                yield {
+                    "status": "error",
+                    "piece": "",
+                    "error": "Simulated internal service error"
+                }
+                return
+
+            if random.random() < self.config.timeout_rate:
+                time.sleep(self.config.base_latency * 2)
+                yield {
+                    "status": "timeout",
+                    "piece": "",
+                    "error": "Simulated request timeout"
+                }
+                return
+
             for piece in answer.split():
                 time.sleep(self.config.stream_piece_delay)
 
@@ -194,6 +271,7 @@ class StandinService:
                     ) * 1000
 
                 yield {
+                    "status": "ok",
                     "piece": piece + " ",
                     "first_token_ms": round(first_token_ms, 2),
                     "elapsed_ms": round(
@@ -202,10 +280,7 @@ class StandinService:
                 }
 
         finally:
-            with self.lock:
-                self.active_requests -= 1
-
-            self.semaphore.release()
+            self._release_request_slot()
 
     def get_metrics(self):
         with self.lock:
@@ -216,8 +291,11 @@ class StandinService:
             }
 
         with self.rate_limit_lock:
-            metrics["requests_in_current_window"] = len(
-                self.request_timestamps
+            metrics["requests_in_minute_window"] = len(
+                self.minute_timestamps
+            )
+            metrics["requests_in_daily_window"] = len(
+                self.daily_timestamps
             )
 
         return metrics

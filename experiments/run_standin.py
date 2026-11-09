@@ -46,18 +46,27 @@ def run_one_request(service, request_number, scenario):
     return result
 
 
+
 def run_streaming_request(service, request_number, scenario):
-    """Run a streaming request and measure first-token latency."""
+    """Run a streaming request and record its actual status."""
 
     request_start_time = time.perf_counter()
     start_timestamp = datetime.now(timezone.utc).isoformat()
 
     first_token_ms = None
     response_parts = []
+    status = "ok"
+    error = None
+    retries = 0
 
     for chunk in service.generate_stream(
         f"Explain attention mechanism. Request {request_number}"
     ):
+        if chunk["status"] != "ok":
+            status = chunk["status"]
+            error = chunk.get("error")
+            break
+
         if first_token_ms is None:
             first_token_ms = chunk["first_token_ms"]
 
@@ -66,10 +75,11 @@ def run_streaming_request(service, request_number, scenario):
     total_ms = (time.perf_counter() - request_start_time) * 1000
 
     result = {
-        "status": "ok",
-        "answer": "".join(response_parts),
+        "status": status,
+        "answer": "".join(response_parts) if status == "ok" else None,
         "total_ms": round(total_ms, 2),
-        "first_token_ms": first_token_ms
+        "first_token_ms": first_token_ms,
+        "error": error
     }
 
     logger.log_request(
@@ -78,8 +88,8 @@ def run_streaming_request(service, request_number, scenario):
         start_time=start_timestamp,
         first_token_ms=first_token_ms,
         total_ms=round(total_ms, 2),
-        status="ok",
-        retries=0,
+        status=status,
+        retries=retries,
         tokens_in=None,
         tokens_out=None,
         retrieval_setting="standin_streaming",
@@ -205,6 +215,21 @@ def main():
             "config": StandinConfig(
                 stream_piece_delay=0.1,
                 max_concurrent_requests=3
+            )
+        },
+        {
+            "name": "standin_half_rpm",
+            "requests": 10,
+            "workers": 1,
+            "streaming": False,
+            "config": StandinConfig(
+                base_latency=0.1,
+                max_concurrent_requests=3,
+                requests_per_minute=5,
+                rate_limit_window_seconds=60,
+                failure_rate=0.0,
+                timeout_rate=0.0,
+                rate_limit_rate=0.0
             )
         }
     ]
