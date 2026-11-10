@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "completed": {
+    "bm25_top3": {
+      "1": {
+        "request_id": "aabfa6e5-80c5-46f2-820c-e356c90f87f6",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "2": {
+        "request_id": "2f051871-3075-4b1c-a18d-2c2241c2940a",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "3": {
+        "request_id": "063544a0-9df8-46d0-8624-eb6efb646237",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "4": {
+        "request_id": "fb47649c-9556-4a87-a273-7788938337b1",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "5": {
+        "request_id": "91039a80-b67d-47fc-8412-9b5f54241a48",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "7": {
+        "request_id": "52c5cbaf-0dd5-4054-b434-827e49059502",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "8": {
+        "request_id": "2bccb063-69b0-4d2a-afe2-3217c10f541c",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "10": {
+        "request_id": "0c2883ca-f6f9-4c71-8641-a859fb52ee7d",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "11": {
+        "request_id": "94b644b2-5c83-4f97-a75b-4e91beda2bb3",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "13": {
+        "request_id": "31702675-f06d-4265-8f2f-99e6cc7709fb",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "15": {
+        "request_id": "7d636487-6526-4554-9c35-72717c85af1f",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      }
+    }
+  }
+}
