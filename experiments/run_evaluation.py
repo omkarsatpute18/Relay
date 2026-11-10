@@ -42,7 +42,8 @@ def main():
         relay = RelayPipeline()
         result = relay.process(
             question,
-            scenario="retrieval_eval_bm25_top3_top8"
+            scenario="retrieval_comparison",
+            retrieval_setting="bm25_top8"
         )
 
         print("\n===== RESULT =====")

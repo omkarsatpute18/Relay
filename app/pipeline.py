@@ -14,27 +14,32 @@ class RelayPipeline:
 
     def __init__(self):
 
-        # Initialize the paper retrieval system.
         self.retriever = PaperRetriever()
 
-        # Connect the retriever to the decision engine.
         self.decision_engine = DecisionEngine(
             retriever=self.retriever,
             minimum_score=1.0
         )
 
-        # Initialize generation, validation and logging.
         self.generator = AnswerGenerator()
         self.validator = CitationValidator()
         self.logger = CSVLogger()
 
-    def process(self, question, scenario="real_baseline"):
+    def process(
+        self,
+        question,
+        scenario="real_baseline",
+        retrieval_setting="adaptive_top3_top8"
+    ):
 
         start_time = time.perf_counter()
         start_timestamp = datetime.now(timezone.utc).isoformat()
 
         try:
-            result = self._process(question)
+            result = self._process(
+                question,
+                retrieval_setting
+            )
 
         except Exception as error:
             result = {
@@ -50,7 +55,6 @@ class RelayPipeline:
         metrics = result.pop("_metrics", {})
         pipeline_status = result.get("status", "error")
 
-        # Convert pipeline status into the required CSV status.
         if pipeline_status in {"ok", "refused_correctly"}:
             csv_status = "ok"
         elif pipeline_status == "rate_limited":
@@ -75,7 +79,7 @@ class RelayPipeline:
             retries=metrics.get("retries", 0),
             tokens_in=metrics.get("tokens_in"),
             tokens_out=metrics.get("tokens_out"),
-            retrieval_setting="bm25_top3_then_top8",
+            retrieval_setting=retrieval_setting,
             answer_grade=answer_grade,
         )
 
@@ -85,22 +89,28 @@ class RelayPipeline:
         result["tokens_in"] = metrics.get("tokens_in")
         result["tokens_out"] = metrics.get("tokens_out")
         result["first_token_ms"] = metrics.get("first_token_ms")
+        result["retrieval_setting"] = retrieval_setting
 
         return result
 
-    def _process(self, question):
+    def _process(self, question, retrieval_setting):
 
         # STEP 1: Analyze the question.
         analyzed_query = analyze_query(question)
-
         search_query = analyzed_query["search_query"]
 
-        # STEP 2: Retrieve evidence and check its sufficiency.
+        # STEP 2: Retrieve evidence using the selected setting.
         decision = self.decision_engine.retrieve_evidence(
-            search_query
+            search_query,
+            retrieval_setting=retrieval_setting
         )
 
         retrieved_chunks = decision["evidence"]
+
+        metrics = {
+            "retrieval_setting": retrieval_setting,
+            "retrieval_attempts": decision["retrieval_attempts"],
+        }
 
         # STEP 3: Refuse if sufficient evidence is unavailable.
         if not decision["sufficient"]:
@@ -112,26 +122,23 @@ class RelayPipeline:
                     "available research papers."
                 ),
                 "citations": [],
-                "_metrics": {
-                    "retrieval_setting": "bm25_top3_then_top8"
-                },
+                "_metrics": metrics,
             }
 
         # STEP 4: Generate an answer using Groq.
         generated = self.generator.generate(
             question=question,
             evidence=retrieved_chunks,
-)
+        )
 
         generated_status = generated.get("status", "error")
 
-        metrics = {
+        metrics.update({
             "first_token_ms": generated.get("first_token_ms"),
             "tokens_in": generated.get("tokens_in"),
             "tokens_out": generated.get("tokens_out"),
             "retries": generated.get("retries", 0),
-            "retrieval_setting": "bm25_top3_then_top8",
-        }
+        })
 
         # Handle a correct model refusal.
         if generated_status == "refused_correctly":
@@ -160,8 +167,7 @@ class RelayPipeline:
                 "_metrics": metrics,
             }
 
-        
-# STEP 5: Validate citations.
+        # STEP 5: Validate citations.
         citations = generated.get("citations", [])
 
         validation = self.validator.validate(
@@ -172,15 +178,15 @@ class RelayPipeline:
         if not validation.get("valid", False):
 
             return {
-        "status": "validation_failed",
-        "answer": generated.get("answer", ""),
-        "citations": citations,
-        "error": validation.get(
-            "reason",
-            "Citation validation failed."
-        ),
-        "_metrics": metrics,
-    }
+                "status": "validation_failed",
+                "answer": generated.get("answer", ""),
+                "citations": citations,
+                "error": validation.get(
+                    "reason",
+                    "Citation validation failed."
+                ),
+                "_metrics": metrics,
+            }
 
         # STEP 6: Return the final answer.
         return {

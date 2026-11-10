@@ -101,7 +101,7 @@ RESEARCH PASSAGES:
                     "content": user_prompt
                 }
             ],
-            max_tokens=800,
+            max_tokens=1200,
             max_attempts=3,
             max_retry_wait_seconds=10,
             base_backoff_seconds=1
