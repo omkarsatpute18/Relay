@@ -70,7 +70,11 @@ def run_one_request(service, request_number, scenario):
         answer_grade=answer_grade,
     )
 
+    # Use caller-observed wall-clock duration for reporting. A quota rejection
+    # may have an internal service duration of 0 ms, but the caller still
+    # spends a measurable amount of time making that request.
     result["measured_total_ms"] = round(total_ms, 2)
+    result["total_ms"] = round(total_ms, 2)
     return result
 
 
@@ -147,19 +151,26 @@ def run_scenario(name, request_count, workers, config, streaming=False):
     refusals = sum(r.get("outcome") == "refused" for r in results)
 
     metrics = service.get_metrics()
-    total_values = [r["total_ms"] for r in results if "total_ms" in r]
+    total_values = [
+        r.get("measured_total_ms", r.get("total_ms"))
+        for r in results
+        if r.get("measured_total_ms", r.get("total_ms")) is not None
+    ]
     first_token_values = [
         r["first_token_ms"]
         for r in results
         if r.get("first_token_ms") is not None
     ]
 
-    offered_rate = request_count / duration if duration > 0 else 0
+    # Requests are submitted together as a batch. This is achieved throughput,
+    # not a paced offered-arrival rate.
+    throughput_rate = request_count / duration if duration > 0 else 0
 
     print("Requests:", request_count)
     print("Workers:", workers)
     print("Duration:", round(duration, 2), "seconds")
-    print("Offered rate:", round(offered_rate, 3), "requests/second")
+    print("Completed throughput:", round(throughput_rate, 3), "requests/second")
+    print("Workload pattern: batch submission (not paced arrivals)")
     print("Successful service responses:", successful)
     print("Rate limited:", rate_limited)
     print("Timeouts:", timed_out)
@@ -190,7 +201,8 @@ def run_scenario(name, request_count, workers, config, streaming=False):
         "requests": request_count,
         "workers": workers,
         "duration_seconds": round(duration, 2),
-        "offered_requests_per_second": round(offered_rate, 3),
+        "completed_throughput_requests_per_second": round(throughput_rate, 3),
+        "arrival_pattern": "batch_submission",
         "successful": successful,
         "rate_limited": rate_limited,
         "timeouts": timed_out,
