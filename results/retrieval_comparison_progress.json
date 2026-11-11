@@ -56,6 +56,257 @@
         "request_id": "7d636487-6526-4554-9c35-72717c85af1f",
         "grade": "refused_correctly",
         "progress_status": "graded"
+      },
+      "6": {
+        "request_id": "a5c21c83-e245-4b99-bac2-738e982ebf30",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "9": {
+        "request_id": "fdc05775-0c0c-411e-8f0a-c145d14fdf97",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "12": {
+        "request_id": "893d07d0-3c91-449f-89c8-3945069fe1b8",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "14": {
+        "request_id": "cdcd9156-b916-410b-b697-400b7af48eda",
+        "grade": "correct",
+        "progress_status": "graded"
+      }
+    },
+    "bm25_top5": {
+      "1": {
+        "request_id": "3ba835f6-8c9e-45ac-97b0-813aabeb003e",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "2": {
+        "request_id": "d9818554-da0d-484d-9997-2f70f67bcf41",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "3": {
+        "request_id": "83d86ddf-805f-4e20-ba69-2c3490fa2ada",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "4": {
+        "request_id": "029b8e44-af72-4c5d-933d-ddb0140af90b",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "5": {
+        "request_id": "0fcbc325-3da6-402a-a6ba-84cafde00dbf",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "6": {
+        "request_id": "f2f5134a-2691-4468-b9ef-2d4025217e95",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "7": {
+        "request_id": "db07f56c-a31c-43c5-a037-536220bafb17",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "15": {
+        "request_id": "fa2c3f17-74a6-4b95-ba66-48cc41364f0f",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "8": {
+        "request_id": "de6abd29-48a0-40c0-86f5-49b889e8a2cd",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "9": {
+        "request_id": "4847e0ee-8b7d-4904-bffa-c796afcc9dc7",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "10": {
+        "request_id": "c89e9829-0aab-4f7c-b6ad-cef14ea21e7e",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "11": {
+        "request_id": "9c65c190-d091-4457-9b38-257424e31c89",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "13": {
+        "request_id": "06853984-dfe7-4ecf-80c4-5d7f31524677",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "12": {
+        "request_id": "9bfe7c97-dd0f-4a76-81a2-7672a8f55836",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "14": {
+        "request_id": "48008782-05d4-48a2-8890-664c9294eab2",
+        "grade": "correct",
+        "progress_status": "graded"
+      }
+    },
+    "bm25_top8": {
+      "1": {
+        "request_id": "d387aba4-953e-4dce-86f8-2f6f296afba9",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "2": {
+        "request_id": "0e060201-fb71-40c1-811d-16b2c7c69332",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "3": {
+        "request_id": "11210364-b5fd-4cd5-9e9b-36384228b0ef",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "4": {
+        "request_id": "c23a89f5-7e33-4724-b390-9a9f5dddf8d3",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "5": {
+        "request_id": "17773b34-55db-4ccd-915f-8c233174887b",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "6": {
+        "request_id": "38c4fe47-1553-4f7d-aad2-7a783474c1b1",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "7": {
+        "request_id": "14f5df95-a890-4e42-85bf-7538dbf3e933",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "8": {
+        "request_id": "2eefc6cc-f1da-4372-9718-ecb02d85c421",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "9": {
+        "request_id": "ed924e7c-de01-45e1-9549-8edcb72c311c",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "10": {
+        "request_id": "26c7dbc7-7ef7-44e8-812f-db04492fff41",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "11": {
+        "request_id": "b405bb15-197b-4051-b7fa-914e609e2ded",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "12": {
+        "request_id": "73c43ff5-8469-4fe7-bc49-4594bd288af1",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "13": {
+        "request_id": "fdb1d775-ed5d-4cce-b6e3-a7922d962e58",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "14": {
+        "request_id": "a8a71a78-7e4e-4f24-80a2-4e5b433c693a",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "15": {
+        "request_id": "1d2df434-c3da-4aab-9fcd-4ba9974cce16",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      }
+    },
+    "adaptive_top3_top8": {
+      "1": {
+        "request_id": "abc7cd65-e8ab-4449-a5f1-a7e2f816c729",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "3": {
+        "request_id": "222c215a-51cd-4114-8646-51892fd732ef",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "4": {
+        "request_id": "f4244781-5df6-41a8-bc56-775c56b2c6d1",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "5": {
+        "request_id": "9f71d08b-39a8-445c-a22f-47614cbfefbe",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "6": {
+        "request_id": "4e5d0939-6512-4316-8f3b-8c20362b5a93",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "8": {
+        "request_id": "fec06a45-fcc2-4b94-873e-2bc7376e8355",
+        "grade": "refused_wrongly",
+        "progress_status": "graded"
+      },
+      "9": {
+        "request_id": "56ef3817-5aab-40ba-8f1e-9c7be3ced026",
+        "grade": "refused_correctly",
+        "progress_status": "graded"
+      },
+      "10": {
+        "request_id": "ecfbcfea-94da-46c3-938d-8c434f20711e",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "11": {
+        "request_id": "3343a229-fdaa-4d53-87f3-e1a54613e316",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "12": {
+        "request_id": "f3bd4100-9d5e-4d53-9241-84fde11dd283",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "13": {
+        "request_id": "710cfbb6-4873-4899-ab5d-4aa84fe99c2b",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "14": {
+        "request_id": "3e1f12cf-60a6-4fc4-bfb2-941fb287d14f",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "15": {
+        "request_id": "3b956e11-5702-47d3-90f5-1ae535a4abfa",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "2": {
+        "request_id": "35245321-c5f9-45f5-8c0e-5af81b3527c6",
+        "grade": "correct",
+        "progress_status": "graded"
+      },
+      "7": {
+        "request_id": "c8361c67-9f8b-4f32-9609-31d24df97742",
+        "grade": "correct",
+        "progress_status": "graded"
       }
     }
   }
